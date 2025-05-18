@@ -28,10 +28,12 @@ function App(): React.JSX.Element {
         backgroundColor={backgroundStyle.backgroundColor}
       />
       <View style={styles.extraTopPadding} />
+
       <View style={styles.container}>
         <Text style={[styles.title, { color: textColor }]}>
           Alertas del Sistema de Invernadero
         </Text>
+        
         <SensorTemp />
       </View>
     </SafeAreaView>

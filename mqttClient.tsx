@@ -1,7 +1,7 @@
 import mqtt from 'mqtt';
 
 // URL de conexión: mqtt://host:puerto
-const client = mqtt.connect('ws://192.168.1.9:9001');
+const client = mqtt.connect('ws://173.212.224.226:9001');
 
 client.on('connect', () => {
   console.log('✔️ Conectado al broker MQTT');

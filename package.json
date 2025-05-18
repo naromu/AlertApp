@@ -10,6 +10,8 @@
     "test": "jest"
   },
   "dependencies": {
+    "@expo-google-fonts/poppins": "^0.3.1",
+    "expo-font": "~13.3.1",
     "mqtt": "^5.13.0",
     "react": "19.0.0",
     "react-native": "0.79.2"

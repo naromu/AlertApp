@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { Text, View, StyleSheet, FlatList, Pressable } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import mqttClient from './mqttClient';
-import Sound from 'react-native-sound';
 
 import { Button } from 'react-native';
 
@@ -46,13 +45,6 @@ export default function SensorTemp() {
       console.error('❌ Error al eliminar notificaciones:', error);
     }
   };
-
-
-  // Inicializar el sonido
-  useEffect(() => {
-    // Habilitar errores detallados
-    Sound.setCategory('Playback');
-  }, []);
 
 
 

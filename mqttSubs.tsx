@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Text, View, StyleSheet, FlatList, Pressable, Button, ActivityIndicator } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import mqtt from 'mqtt';
-
+import { MQTT_TOPIC, client} from './mqttClient'; 
 
 type SensorData = {
   time: string;
@@ -13,15 +12,12 @@ type SensorData = {
 };
 
 const STORAGE_KEY = 'sensorDataList';
-const MQTT_TOPIC = 'sensores/temperatura';
 
-export default function SensorTemp() {
+export default function Sensor() {
   const [dataList, setDataList] = useState<SensorData[]>([]);
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [subscriptionError, setSubscriptionError] = useState<string | null>(null);
 
-  // MQTT Client
-  const client = mqtt.connect('ws://173.212.224.226:9001');
 
   // Cargar datos almacenados localmente
   useEffect(() => {
@@ -34,7 +30,7 @@ export default function SensorTemp() {
           setDataList(initialized);
         }
       } catch (error) {
-        console.error('❌ Error cargando datos guardados:', error);
+        console.error('Error cargando datos guardados:', error);
       }
     };
 
@@ -46,10 +42,10 @@ export default function SensorTemp() {
     const onConnect = () => {
       client.subscribe(MQTT_TOPIC, { qos: 0 }, (err) => {
         if (err) {
-          console.error('❌ Error al suscribirse:', err);
-          setSubscriptionError('❌ Error al suscribirse al servicio MQTT');
+          console.error('Error al suscribirse:', err);
+          setSubscriptionError('Error al suscribirse al servicio MQTT');
         } else {
-          console.log('🔔 Suscripción exitosa');
+          console.log('Suscripción exitosa');
           setIsSubscribed(true);
         }
       });
@@ -70,12 +66,12 @@ export default function SensorTemp() {
             
 
             AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(newList))
-              .catch(err => console.error('❌ Error guardando en AsyncStorage:', err));
+              .catch(err => console.error('Error guardando en memoria:', err));
 
             return newList;
           });
         } catch (error) {
-          console.error('❌ Error parsing JSON:', error);
+          console.error('Error parsing JSON:', error);
         }
       }
     };
@@ -83,8 +79,8 @@ export default function SensorTemp() {
     client.on('connect', onConnect);
     client.on('message', onMessage);
     client.on('error', (err) => {
-      console.error('⚠️ Error MQTT:', err);
-      setSubscriptionError('⚠️ Error en la conexión MQTT');
+      console.error('Error MQTT:', err);
+      setSubscriptionError(' Error en la conexión MQTT');
     });
 
     return () => {
@@ -97,7 +93,7 @@ export default function SensorTemp() {
       await AsyncStorage.removeItem(STORAGE_KEY);
       setDataList([]);
     } catch (error) {
-      console.error('❌ Error al eliminar notificaciones:', error);
+      console.error('Error al eliminar notificaciones:', error);
     }
   };
 
@@ -107,7 +103,7 @@ export default function SensorTemp() {
       updated[index].isNew = false;
 
       AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated)).catch(err =>
-        console.error('❌ Error actualizando AsyncStorage:', err)
+        console.error('Error actualizando memoria:', err)
       );
 
       return updated;

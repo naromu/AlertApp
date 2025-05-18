@@ -10,7 +10,7 @@ import {
   View,
 } from 'react-native';
 import { Colors } from 'react-native/Libraries/NewAppScreen';
-import SensorTemp from './mqttSubs';
+import Sensor from './mqttSubs';
 
 function App(): React.JSX.Element {
   const isDarkMode = useColorScheme() === 'dark';
@@ -35,7 +35,7 @@ function App(): React.JSX.Element {
           Alertas del Sistema de Invernadero
         </Text>
         
-        <SensorTemp />
+        <Sensor />
       </View>
     </SafeAreaView>
   );
@@ -52,7 +52,7 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
-    paddingHorizontal: 25, // 👉 padding lateral
+    paddingHorizontal: 25, 
   },
   title: {
     fontSize: 32,

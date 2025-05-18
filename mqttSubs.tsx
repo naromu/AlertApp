@@ -1,31 +1,35 @@
 import React, { useEffect, useState } from 'react';
-import { Text, View, StyleSheet, FlatList, Pressable } from 'react-native';
+import { Text, View, StyleSheet, FlatList, Pressable, Button, ActivityIndicator } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import mqttClient from './mqttClient';
+import mqtt from 'mqtt';
 
-import { Button } from 'react-native';
 
 type SensorData = {
   time: string;
   location: string;
   sensor: string;
   value: number;
-  isNew?: boolean; 
+  isNew?: boolean;
 };
 
 const STORAGE_KEY = 'sensorDataList';
+const MQTT_TOPIC = 'sensores/temperatura';
 
 export default function SensorTemp() {
   const [dataList, setDataList] = useState<SensorData[]>([]);
+  const [isSubscribed, setIsSubscribed] = useState(false);
+  const [subscriptionError, setSubscriptionError] = useState<string | null>(null);
 
-  // Cargar datos guardados
+  // MQTT Client
+  const client = mqtt.connect('ws://173.212.224.226:9001');
+
+  // Cargar datos almacenados localmente
   useEffect(() => {
     const loadStoredData = async () => {
       try {
         const stored = await AsyncStorage.getItem(STORAGE_KEY);
         if (stored) {
           const parsed: SensorData[] = JSON.parse(stored);
-          // Marcar como no nuevas (vienen de disco)
           const initialized = parsed.map(item => ({ ...item, isNew: false }));
           setDataList(initialized);
         }
@@ -37,21 +41,22 @@ export default function SensorTemp() {
     loadStoredData();
   }, []);
 
-  const clearAllNotifications = async () => {
-    try {
-      await AsyncStorage.removeItem(STORAGE_KEY);
-      setDataList([]);
-    } catch (error) {
-      console.error('❌ Error al eliminar notificaciones:', error);
-    }
-  };
-
-
-
-  // Nuevos mensajes por MQTT
+  // MQTT conexión y suscripción
   useEffect(() => {
+    const onConnect = () => {
+      client.subscribe(MQTT_TOPIC, { qos: 0 }, (err) => {
+        if (err) {
+          console.error('❌ Error al suscribirse:', err);
+          setSubscriptionError('❌ Error al suscribirse al servicio MQTT');
+        } else {
+          console.log('🔔 Suscripción exitosa');
+          setIsSubscribed(true);
+        }
+      });
+    };
+
     const onMessage = (topic: string, message: Buffer) => {
-      if (topic === 'sensores/temperatura') {
+      if (topic === MQTT_TOPIC) {
         try {
           const json: SensorData = JSON.parse(message.toString());
           const newEntry = { ...json, isNew: true };
@@ -62,6 +67,7 @@ export default function SensorTemp() {
               if (!a.isNew && b.isNew) return 1;
               return new Date(b.time).getTime() - new Date(a.time).getTime();
             });
+            
 
             AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(newList))
               .catch(err => console.error('❌ Error guardando en AsyncStorage:', err));
@@ -74,11 +80,26 @@ export default function SensorTemp() {
       }
     };
 
-    mqttClient.on('message', onMessage);
+    client.on('connect', onConnect);
+    client.on('message', onMessage);
+    client.on('error', (err) => {
+      console.error('⚠️ Error MQTT:', err);
+      setSubscriptionError('⚠️ Error en la conexión MQTT');
+    });
+
     return () => {
-      mqttClient.off('message', onMessage);
+      client.end();
     };
   }, []);
+
+  const clearAllNotifications = async () => {
+    try {
+      await AsyncStorage.removeItem(STORAGE_KEY);
+      setDataList([]);
+    } catch (error) {
+      console.error('❌ Error al eliminar notificaciones:', error);
+    }
+  };
 
   const handlePress = (index: number) => {
     setDataList(prev => {
@@ -98,8 +119,6 @@ export default function SensorTemp() {
 
     return (
       <Pressable onPress={() => handlePress(index)}>
-
-
         <View style={styles.card}>
           {item.isNew && <Text style={styles.newAlert}>¡Nueva alerta!</Text>}
           <Text style={styles.title}>Sensor: {item.sensor}</Text>
@@ -116,9 +135,9 @@ export default function SensorTemp() {
     <View style={styles.actions}>
       {dataList.length > 0 && (
         <View style={styles.buttonContainer}>
-          <Button 
-            title="Eliminar notificaciones" 
-            onPress={clearAllNotifications} 
+          <Button
+            title="Eliminar notificaciones"
+            onPress={clearAllNotifications}
           />
         </View>
       )}
@@ -127,11 +146,24 @@ export default function SensorTemp() {
         keyExtractor={(item, index) => `${item.time}-${index}`}
         renderItem={renderItem}
         contentContainerStyle={styles.listContent}
-        ListEmptyComponent={
-          <Text style={styles.emptyText}>
-            Esperando alertas del servidor...
-          </Text>
-        }
+          ListEmptyComponent={
+            subscriptionError ? (
+              <Text style={styles.emptyText}>{subscriptionError}</Text>
+            ) : !isSubscribed ? (
+              <View style={styles.centered}>
+                <Text style={styles.emptyText}>🔌 Conectando al servicio...</Text>
+                <ActivityIndicator size="large" color="#888" />
+
+              </View>
+            ) : (
+              <View style={styles.centered}>
+                <Text style={styles.emptyText}>Esperando alertas del servidor...</Text>
+                <ActivityIndicator size="large" color="#888" />
+
+              </View>
+            )
+          }
+
       />
     </View>
   );
@@ -165,7 +197,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
   },
   actions: {
-    flex: 1,  // Asegura que el contenedor tome todo el espacio disponible
+    flex: 1,
     marginBottom: 16,
   },
   buttonContainer: {
@@ -173,8 +205,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
   },
   listContent: {
-    flexGrow: 1,  // Permite que la lista crezca
-    paddingBottom: 150,  // Añade más espacio al final
+    flexGrow: 1,
+    paddingBottom: 150,
   },
   emptyText: {
     fontSize: 18,
@@ -182,4 +214,11 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     paddingTop: 16,
   },
+centered: {
+  alignItems: 'center',
+  justifyContent: 'center',
+  paddingTop: 16,
+
+},
+
 });

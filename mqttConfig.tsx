@@ -7,7 +7,7 @@ export interface MqttConfig {
 }
 
 const DEFAULT_CONFIG: MqttConfig = {
-  host: '192.168.214.155',
+  host: '173.212.224.226',
   port: 9001,
   topic: 'alertapp/test'
 };
